@@ -1,0 +1,6 @@
+{
+  "name": "Bharat Schools Management",
+  "description": "Smart School Management - Modern Multi-School ERP and Education Management Platform",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
