@@ -60,15 +60,19 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
 
   // Load existing results into local state
   useEffect(() => {
-    const existing = scopedExamResults.filter((r) => r.examId === selectedExamId);
+    const existing = (scopedExamResults || []).filter((r) => r && r.examId === selectedExamId);
     const map: Record<string, { subjects: Record<string, number>; remarks: string }> = {};
 
-    targetStudents.forEach((student) => {
-      const studentResult = existing.find((r) => r.studentId === student.id);
+    (targetStudents || []).forEach((student) => {
+      if (!student) return;
+      const studentResult = existing.find((r) => r && r.studentId === student.id);
       const subMap: Record<string, number> = {};
 
-      targetSubjects.forEach((subj) => {
-        const foundScore = studentResult?.subjectMarks.find((sm) => sm.subjectId === subj.id);
+      (targetSubjects || []).forEach((subj) => {
+        if (!subj) return;
+        const foundScore = Array.isArray(studentResult?.subjectMarks)
+          ? studentResult.subjectMarks.find((sm) => sm && sm.subjectId === subj.id)
+          : undefined;
         subMap[subj.id] = foundScore ? foundScore.marksObtained : 85;
       });
 

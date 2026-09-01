@@ -27,6 +27,7 @@ import {
   SchoolSettings,
   ToastMessage,
   UserRole,
+  NotificationCategory,
 } from '../types';
 import {
   INITIAL_SCHOOLS,
@@ -136,10 +137,13 @@ interface AppContextType {
   scopedDocuments: SchoolDocument[];
   scopedBooks: LibraryBook[];
   scopedLibraryIssues: LibraryIssue[];
+  scopedBookIssues: LibraryIssue[];
   scopedVehicles: Vehicle[];
   scopedRoutes: TransportRoute[];
   scopedAuditLogs: AuditLog[];
   currentSchoolSettings: SchoolSettings | null;
+
+  theme: 'dark' | 'light';
 
   // CRUD Functions
   addSchool: (school: Omit<School, 'id' | 'createdAt'>) => void;
@@ -189,6 +193,16 @@ interface AppContextType {
   addRoute: (route: Omit<TransportRoute, 'id' | 'schoolId'>) => void;
 
   updateSettings: (updates: Partial<SchoolSettings>) => void;
+  updateUser: (id: string, updates: Partial<User>) => void;
+  updateCurrentUser: (updates: Partial<User>) => void;
+  sendBroadcastNotification: (
+    title: string,
+    message: string,
+    targetRole?: UserRole | 'all',
+    link?: string,
+    category?: NotificationCategory,
+    attachmentName?: string
+  ) => void;
 
   // Notifications & Toast
   toasts: ToastMessage[];
@@ -208,7 +222,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const loadState = <T,>(key: string, defaultVal: T): T => {
     try {
       const stored = localStorage.getItem(LOCAL_STORAGE_PREFIX + key);
-      return stored ? JSON.parse(stored) : defaultVal;
+      if (!stored) return defaultVal;
+      const parsed = JSON.parse(stored);
+      if (parsed === null || parsed === undefined) return defaultVal;
+      if (Array.isArray(defaultVal)) {
+        return Array.isArray(parsed) ? (parsed as unknown as T) : defaultVal;
+      }
+      if (typeof defaultVal === 'object' && defaultVal !== null) {
+        return typeof parsed === 'object' && parsed !== null ? (parsed as unknown as T) : defaultVal;
+      }
+      return parsed as T;
     } catch {
       return defaultVal;
     }
@@ -346,170 +369,187 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Scoped Data Queries (Multi-Tenant Isolation)
   const scopedStudents = useMemo(() => {
     if (!currentUser) return [];
+    const list = students || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? students.filter((s) => s.schoolId === effectiveSchoolId) : students;
+      return effectiveSchoolId ? list.filter((s) => s.schoolId === effectiveSchoolId) : list;
     }
     if (currentUser.role === 'parent') {
       const allowedIds = currentUser.linkedStudentIds || [];
-      return students.filter((s) => s.schoolId === currentUser.schoolId && allowedIds.includes(s.id));
+      return list.filter((s) => s.schoolId === currentUser.schoolId && allowedIds.includes(s.id));
     }
     if (currentUser.role === 'student') {
-      return students.filter((s) => s.id === currentUser.linkedStudentId);
+      return list.filter((s) => s.id === currentUser.linkedStudentId);
     }
-    return students.filter((s) => s.schoolId === currentUser.schoolId);
+    return list.filter((s) => s.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, students]);
 
   const scopedTeachers = useMemo(() => {
     if (!currentUser) return [];
+    const list = teachers || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? teachers.filter((t) => t.schoolId === effectiveSchoolId) : teachers;
+      return effectiveSchoolId ? list.filter((t) => t.schoolId === effectiveSchoolId) : list;
     }
-    return teachers.filter((t) => t.schoolId === currentUser.schoolId);
+    return list.filter((t) => t.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, teachers]);
 
   const scopedClasses = useMemo(() => {
     if (!currentUser) return [];
+    const list = classes || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? classes.filter((c) => c.schoolId === effectiveSchoolId) : classes;
+      return effectiveSchoolId ? list.filter((c) => c.schoolId === effectiveSchoolId) : list;
     }
-    return classes.filter((c) => c.schoolId === currentUser.schoolId);
+    return list.filter((c) => c.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, classes]);
 
   const scopedSections = useMemo(() => {
     if (!currentUser) return [];
+    const list = sections || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? sections.filter((s) => s.schoolId === effectiveSchoolId) : sections;
+      return effectiveSchoolId ? list.filter((s) => s.schoolId === effectiveSchoolId) : list;
     }
-    return sections.filter((s) => s.schoolId === currentUser.schoolId);
+    return list.filter((s) => s.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, sections]);
 
   const scopedSubjects = useMemo(() => {
     if (!currentUser) return [];
+    const list = subjects || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? subjects.filter((s) => s.schoolId === effectiveSchoolId) : subjects;
+      return effectiveSchoolId ? list.filter((s) => s.schoolId === effectiveSchoolId) : list;
     }
-    return subjects.filter((s) => s.schoolId === currentUser.schoolId);
+    return list.filter((s) => s.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, subjects]);
 
   const scopedAttendance = useMemo(() => {
     if (!currentUser) return [];
+    const list = attendance || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? attendance.filter((a) => a.schoolId === effectiveSchoolId) : attendance;
+      return effectiveSchoolId ? list.filter((a) => a.schoolId === effectiveSchoolId) : list;
     }
-    return attendance.filter((a) => a.schoolId === currentUser.schoolId);
+    return list.filter((a) => a.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, attendance]);
 
   const scopedTimetable = useMemo(() => {
     if (!currentUser) return [];
+    const list = timetables || [];
+    const studentList = students || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? timetables.filter((t) => t.schoolId === effectiveSchoolId) : timetables;
+      return effectiveSchoolId ? list.filter((t) => t.schoolId === effectiveSchoolId) : list;
     }
     if (currentUser.role === 'student' && currentUser.linkedStudentId) {
-      const me = students.find((s) => s.id === currentUser.linkedStudentId);
+      const me = studentList.find((s) => s.id === currentUser.linkedStudentId);
       if (me) {
-        return timetables.filter((t) => t.schoolId === currentUser.schoolId && t.classId === me.classId && t.sectionId === me.sectionId);
+        return list.filter((t) => t.schoolId === currentUser.schoolId && t.classId === me.classId && t.sectionId === me.sectionId);
       }
     }
     if (currentUser.role === 'teacher' && currentUser.linkedTeacherId) {
-      return timetables.filter((t) => t.schoolId === currentUser.schoolId && t.teacherId === currentUser.linkedTeacherId);
+      return list.filter((t) => t.schoolId === currentUser.schoolId && t.teacherId === currentUser.linkedTeacherId);
     }
-    return timetables.filter((t) => t.schoolId === currentUser.schoolId);
+    return list.filter((t) => t.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, timetables, students]);
 
   const scopedHomework = useMemo(() => {
     if (!currentUser) return [];
+    const list = homework || [];
+    const studentList = students || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? homework.filter((h) => h.schoolId === effectiveSchoolId) : homework;
+      return effectiveSchoolId ? list.filter((h) => h.schoolId === effectiveSchoolId) : list;
     }
     if (currentUser.role === 'student' && currentUser.linkedStudentId) {
-      const me = students.find((s) => s.id === currentUser.linkedStudentId);
+      const me = studentList.find((s) => s.id === currentUser.linkedStudentId);
       if (me) {
-        return homework.filter((h) => h.schoolId === currentUser.schoolId && h.classId === me.classId && h.sectionId === me.sectionId);
+        return list.filter((h) => h.schoolId === currentUser.schoolId && h.classId === me.classId && h.sectionId === me.sectionId);
       }
     }
     if (currentUser.role === 'parent' && selectedChildId) {
-      const child = students.find((s) => s.id === selectedChildId);
+      const child = studentList.find((s) => s.id === selectedChildId);
       if (child) {
-        return homework.filter((h) => h.schoolId === currentUser.schoolId && h.classId === child.classId && h.sectionId === child.sectionId);
+        return list.filter((h) => h.schoolId === currentUser.schoolId && h.classId === child.classId && h.sectionId === child.sectionId);
       }
     }
-    return homework.filter((h) => h.schoolId === currentUser.schoolId);
+    return list.filter((h) => h.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, homework, students, selectedChildId]);
 
   const scopedExams = useMemo(() => {
     if (!currentUser) return [];
+    const list = exams || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? exams.filter((e) => e.schoolId === effectiveSchoolId) : exams;
+      return effectiveSchoolId ? list.filter((e) => e.schoolId === effectiveSchoolId) : list;
     }
-    return exams.filter((e) => e.schoolId === currentUser.schoolId);
+    return list.filter((e) => e.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, exams]);
 
   const scopedExamSchedules = useMemo(() => {
     if (!currentUser) return [];
+    const list = examSchedules || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? examSchedules.filter((e) => e.schoolId === effectiveSchoolId) : examSchedules;
+      return effectiveSchoolId ? list.filter((e) => e.schoolId === effectiveSchoolId) : list;
     }
-    return examSchedules.filter((e) => e.schoolId === currentUser.schoolId);
+    return list.filter((e) => e.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, examSchedules]);
 
   const scopedExamResults = useMemo(() => {
     if (!currentUser) return [];
+    const list = examResults || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? examResults.filter((r) => r.schoolId === effectiveSchoolId) : examResults;
+      return effectiveSchoolId ? list.filter((r) => r.schoolId === effectiveSchoolId) : list;
     }
     if (currentUser.role === 'student' && currentUser.linkedStudentId) {
-      return examResults.filter((r) => r.schoolId === currentUser.schoolId && r.studentId === currentUser.linkedStudentId && r.isPublished);
+      return list.filter((r) => r.schoolId === currentUser.schoolId && r.studentId === currentUser.linkedStudentId && r.isPublished);
     }
     if (currentUser.role === 'parent' && selectedChildId) {
-      return examResults.filter((r) => r.schoolId === currentUser.schoolId && r.studentId === selectedChildId && r.isPublished);
+      return list.filter((r) => r.schoolId === currentUser.schoolId && r.studentId === selectedChildId && r.isPublished);
     }
-    return examResults.filter((r) => r.schoolId === currentUser.schoolId);
+    return list.filter((r) => r.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, examResults, selectedChildId]);
 
   const scopedFeeStructures = useMemo(() => {
     if (!currentUser) return [];
+    const list = feeStructures || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? feeStructures.filter((f) => f.schoolId === effectiveSchoolId) : feeStructures;
+      return effectiveSchoolId ? list.filter((f) => f.schoolId === effectiveSchoolId) : list;
     }
-    return feeStructures.filter((f) => f.schoolId === currentUser.schoolId);
+    return list.filter((f) => f.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, feeStructures]);
 
   const scopedStudentFees = useMemo(() => {
     if (!currentUser) return [];
+    const list = studentFees || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? studentFees.filter((f) => f.schoolId === effectiveSchoolId) : studentFees;
+      return effectiveSchoolId ? list.filter((f) => f.schoolId === effectiveSchoolId) : list;
     }
     if (currentUser.role === 'student' && currentUser.linkedStudentId) {
-      return studentFees.filter((f) => f.schoolId === currentUser.schoolId && f.studentId === currentUser.linkedStudentId);
+      return list.filter((f) => f.schoolId === currentUser.schoolId && f.studentId === currentUser.linkedStudentId);
     }
     if (currentUser.role === 'parent' && selectedChildId) {
-      return studentFees.filter((f) => f.schoolId === currentUser.schoolId && f.studentId === selectedChildId);
+      return list.filter((f) => f.schoolId === currentUser.schoolId && f.studentId === selectedChildId);
     }
-    return studentFees.filter((f) => f.schoolId === currentUser.schoolId);
+    return list.filter((f) => f.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, studentFees, selectedChildId]);
 
   const scopedFeePayments = useMemo(() => {
     if (!currentUser) return [];
+    const list = feePayments || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? feePayments.filter((p) => p.schoolId === effectiveSchoolId) : feePayments;
+      return effectiveSchoolId ? list.filter((p) => p.schoolId === effectiveSchoolId) : list;
     }
     if (currentUser.role === 'student' && currentUser.linkedStudentId) {
-      return feePayments.filter((p) => p.schoolId === currentUser.schoolId && p.studentId === currentUser.linkedStudentId);
+      return list.filter((p) => p.schoolId === currentUser.schoolId && p.studentId === currentUser.linkedStudentId);
     }
     if (currentUser.role === 'parent' && selectedChildId) {
-      return feePayments.filter((p) => p.schoolId === currentUser.schoolId && p.studentId === selectedChildId);
+      return list.filter((p) => p.schoolId === currentUser.schoolId && p.studentId === selectedChildId);
     }
-    return feePayments.filter((p) => p.schoolId === currentUser.schoolId);
+    return list.filter((p) => p.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, feePayments, selectedChildId]);
 
   const scopedNotices = useMemo(() => {
     if (!currentUser) return [];
+    const list = notices || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? notices.filter((n) => n.schoolId === effectiveSchoolId) : notices;
+      return effectiveSchoolId ? list.filter((n) => n.schoolId === effectiveSchoolId) : list;
     }
-    const schoolNotices = notices.filter((n) => n.schoolId === currentUser.schoolId && n.isPublished);
+    const schoolNotices = list.filter((n) => n.schoolId === currentUser.schoolId && n.isPublished);
     if (currentUser.role === 'school_admin' || currentUser.role === 'principal') {
-      return notices.filter((n) => n.schoolId === currentUser.schoolId);
+      return list.filter((n) => n.schoolId === currentUser.schoolId);
     }
     if (currentUser.role === 'teacher') {
       return schoolNotices.filter((n) => n.targetAudience === 'everyone' || n.targetAudience === 'teachers');
@@ -525,7 +565,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const scopedNotifications = useMemo(() => {
     if (!currentUser) return [];
-    return notifications.filter((n) => {
+    const list = notifications || [];
+    return list.filter((n) => {
       if (currentUser.role === 'super_admin') return true;
       if (n.schoolId && n.schoolId !== currentUser.schoolId) return false;
       if (n.userId && n.userId !== currentUser.id) return false;
@@ -536,59 +577,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const scopedDocuments = useMemo(() => {
     if (!currentUser) return [];
+    const list = documents || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? documents.filter((d) => d.schoolId === effectiveSchoolId) : documents;
+      return effectiveSchoolId ? list.filter((d) => d.schoolId === effectiveSchoolId) : list;
     }
     if (currentUser.role === 'student' && currentUser.linkedStudentId) {
-      return documents.filter((d) => d.schoolId === currentUser.schoolId && (!d.studentId || d.studentId === currentUser.linkedStudentId));
+      return list.filter((d) => d.schoolId === currentUser.schoolId && (!d.studentId || d.studentId === currentUser.linkedStudentId));
     }
     if (currentUser.role === 'parent' && selectedChildId) {
-      return documents.filter((d) => d.schoolId === currentUser.schoolId && (!d.studentId || d.studentId === selectedChildId));
+      return list.filter((d) => d.schoolId === currentUser.schoolId && (!d.studentId || d.studentId === selectedChildId));
     }
-    return documents.filter((d) => d.schoolId === currentUser.schoolId);
+    return list.filter((d) => d.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, documents, selectedChildId]);
 
   const scopedBooks = useMemo(() => {
     if (!currentUser) return [];
+    const list = books || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? books.filter((b) => b.schoolId === effectiveSchoolId) : books;
+      return effectiveSchoolId ? list.filter((b) => b.schoolId === effectiveSchoolId) : list;
     }
-    return books.filter((b) => b.schoolId === currentUser.schoolId);
+    return list.filter((b) => b.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, books]);
 
   const scopedLibraryIssues = useMemo(() => {
     if (!currentUser) return [];
+    const list = libraryIssues || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? libraryIssues.filter((i) => i.schoolId === effectiveSchoolId) : libraryIssues;
+      return effectiveSchoolId ? list.filter((i) => i.schoolId === effectiveSchoolId) : list;
     }
     if (currentUser.role === 'student' && currentUser.linkedStudentId) {
-      return libraryIssues.filter((i) => i.schoolId === currentUser.schoolId && i.borrowerId === currentUser.linkedStudentId);
+      return list.filter((i) => i.schoolId === currentUser.schoolId && i.borrowerId === currentUser.linkedStudentId);
     }
-    return libraryIssues.filter((i) => i.schoolId === currentUser.schoolId);
+    return list.filter((i) => i.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, libraryIssues]);
 
   const scopedVehicles = useMemo(() => {
     if (!currentUser) return [];
+    const list = vehicles || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? vehicles.filter((v) => v.schoolId === effectiveSchoolId) : vehicles;
+      return effectiveSchoolId ? list.filter((v) => v.schoolId === effectiveSchoolId) : list;
     }
-    return vehicles.filter((v) => v.schoolId === currentUser.schoolId);
+    return list.filter((v) => v.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, vehicles]);
 
   const scopedRoutes = useMemo(() => {
     if (!currentUser) return [];
+    const list = routes || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? routes.filter((r) => r.schoolId === effectiveSchoolId) : routes;
+      return effectiveSchoolId ? list.filter((r) => r.schoolId === effectiveSchoolId) : list;
     }
-    return routes.filter((r) => r.schoolId === currentUser.schoolId);
+    return list.filter((r) => r.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, routes]);
 
   const scopedAuditLogs = useMemo(() => {
     if (!currentUser) return [];
+    const list = auditLogs || [];
     if (currentUser.role === 'super_admin') {
-      return effectiveSchoolId ? auditLogs.filter((l) => l.schoolId === effectiveSchoolId) : auditLogs;
+      return effectiveSchoolId ? list.filter((l) => l.schoolId === effectiveSchoolId) : list;
     }
-    return auditLogs.filter((l) => l.schoolId === currentUser.schoolId);
+    return list.filter((l) => l.schoolId === currentUser.schoolId);
   }, [currentUser, effectiveSchoolId, auditLogs]);
 
   const currentSchoolSettings = useMemo(() => {
@@ -955,6 +1002,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = students.map((s) => (s.id === id ? { ...s, ...updates } : s));
     setStudents(updated);
     saveToStorage('students', updated);
+
+    // Sync avatar / details to linked user accounts
+    if (updates.avatar || updates.photo || updates.name) {
+      const avatarUrl = updates.avatar || updates.photo;
+      setUsers((prev) => {
+        const nextUsers = prev.map((u) => {
+          if (u.linkedStudentId === id || u.linkedStudentIds?.includes(id)) {
+            return {
+              ...u,
+              name: updates.name || u.name,
+              avatar: avatarUrl || u.avatar,
+            };
+          }
+          return u;
+        });
+        saveToStorage('users', nextUsers);
+        return nextUsers;
+      });
+    }
+
     addToast('Student profile updated', 'success');
     logAudit('Student Updated', `Updated profile data for student ID ${id}`);
   };
@@ -988,6 +1055,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = teachers.map((t) => (t.id === id ? { ...t, ...updates } : t));
     setTeachers(updated);
     saveToStorage('teachers', updated);
+
+    // Sync avatar / details to linked user accounts
+    if (updates.avatar || updates.photo || updates.name || updates.email) {
+      const avatarUrl = updates.avatar || updates.photo;
+      setUsers((prev) => {
+        const nextUsers = prev.map((u) => {
+          if (u.linkedTeacherId === id || (updates.email && u.email === updates.email)) {
+            return {
+              ...u,
+              name: updates.name || u.name,
+              avatar: avatarUrl || u.avatar,
+              phone: updates.phone || u.phone,
+            };
+          }
+          return u;
+        });
+        saveToStorage('users', nextUsers);
+        return nextUsers;
+      });
+    }
+
     addToast('Teacher details updated', 'success');
     logAudit('Teacher Updated', `Modified teacher information for ID ${id}`);
   };
@@ -1335,6 +1423,87 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveStudentExamResult(resultData);
   };
 
+  const sendBroadcastNotification = (
+    title: string,
+    message: string,
+    targetRole?: UserRole | 'all',
+    link?: string,
+    category: NotificationCategory = 'system',
+    attachmentName?: string
+  ) => {
+    const sId = effectiveSchoolId || 'school_1';
+    const notif: AppNotification = {
+      id: 'notif_' + Date.now(),
+      schoolId: sId,
+      targetRole: targetRole || 'all',
+      title,
+      message,
+      category,
+      timestamp: 'Just now',
+      isRead: false,
+      link: link || 'dashboard',
+      attachmentName,
+    };
+    setNotifications((prev) => {
+      const next = [notif, ...prev];
+      saveToStorage('notifications', next);
+      return next;
+    });
+    addToast(`Broadcast sent: "${title}"`, 'info');
+  };
+
+  const updateUser = (id: string, updates: Partial<User>) => {
+    const updatedUsers = users.map((u) => (u.id === id ? { ...u, ...updates } : u));
+    setUsers(updatedUsers);
+    saveToStorage('users', updatedUsers);
+
+    // Sync student / teacher records if linked
+    const user = users.find((u) => u.id === id);
+    if (user?.linkedTeacherId && (updates.avatar || updates.phone || updates.name)) {
+      setTeachers((prev) => {
+        const next = prev.map((t) =>
+          t.id === user.linkedTeacherId
+            ? {
+                ...t,
+                name: updates.name || t.name,
+                avatar: updates.avatar || t.avatar,
+                photo: updates.avatar || t.photo,
+                phone: updates.phone || t.phone,
+              }
+            : t
+        );
+        saveToStorage('teachers', next);
+        return next;
+      });
+    }
+
+    if (user?.linkedStudentId && (updates.avatar || updates.phone || updates.name)) {
+      setStudents((prev) => {
+        const next = prev.map((s) =>
+          s.id === user.linkedStudentId
+            ? {
+                ...s,
+                name: updates.name || s.name,
+                avatar: updates.avatar || s.avatar,
+                photo: updates.avatar || s.photo,
+                parentPhone: updates.phone || s.parentPhone,
+              }
+            : s
+        );
+        saveToStorage('students', next);
+        return next;
+      });
+    }
+
+    addToast('Profile updated successfully', 'success');
+    logAudit('User Profile Updated', `Updated account information for ${updates.name || user?.name || id}`);
+  };
+
+  const updateCurrentUser = (updates: Partial<User>) => {
+    if (!currentUser) return;
+    updateUser(currentUser.id, updates);
+  };
+
   const addNotice = (noticeData: Omit<SchoolNotice, 'id' | 'schoolId' | 'date' | 'authorName'>) => {
     const sId = effectiveSchoolId || 'school_1';
     const id = 'ntc_' + Date.now();
@@ -1349,21 +1518,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotices(updated);
     saveToStorage('notices', updated);
 
-    // Generate Notification
+    // Broadcast Notification to all matching audience
+    const targetRole =
+      noticeData.targetAudience === 'everyone' || noticeData.targetAudience === 'all'
+        ? 'all'
+        : (noticeData.targetAudience as any);
+
     const newNotif: AppNotification = {
       id: 'notif_' + Date.now(),
       schoolId: sId,
-      targetRole: 'all',
-      title: 'New Notice: ' + newNotice.title,
-      message: newNotice.description.substring(0, 80) + '...',
+      targetRole,
+      title: `📢 Circular: ${newNotice.title}`,
+      message: newNotice.description
+        ? `${newNotice.description.substring(0, 95)}${newNotice.description.length > 95 ? '...' : ''}`
+        : 'New official circular has been published.',
       category: 'notice',
       timestamp: 'Just now',
       isRead: false,
       link: 'notices',
+      attachmentName: newNotice.attachmentName,
     };
-    setNotifications((prev) => [newNotif, ...prev]);
 
-    addToast('Notice published to target audience', 'success');
+    setNotifications((prev) => {
+      const next = [newNotif, ...prev];
+      saveToStorage('notifications', next);
+      return next;
+    });
+
+    addToast('Notice published and broadcasted to school users', 'success');
     logAudit('Notice Published', `Created notice "${newNotice.title}"`);
   };
 
@@ -1394,7 +1576,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = [newDoc, ...documents];
     setDocuments(updated);
     saveToStorage('documents', updated);
-    addToast(`Document "${newDoc.title}" uploaded`, 'success');
+
+    // Broadcast Notification for Document Upload to School Users
+    const targetRole = (docData as any).targetRole || 'all';
+    const newNotif: AppNotification = {
+      id: 'notif_' + Date.now(),
+      schoolId: sId,
+      targetRole: targetRole as any,
+      title: `📄 New Material: ${newDoc.title}`,
+      message: `A new ${newDoc.category} document "${newDoc.title}" (${newDoc.fileSize || 'PDF'}) has been uploaded to the document vault.`,
+      category: 'academic',
+      timestamp: 'Just now',
+      isRead: false,
+      link: 'documents',
+      attachmentName: (newDoc as any).fileName || `${newDoc.title}.pdf`,
+    };
+
+    setNotifications((prev) => {
+      const next = [newNotif, ...prev];
+      saveToStorage('notifications', next);
+      return next;
+    });
+
+    addToast(`Document "${newDoc.title}" uploaded & broadcasted`, 'success');
     logAudit('Document Uploaded', `Uploaded ${newDoc.title} (${newDoc.category})`);
   };
 
@@ -1417,6 +1621,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = [...books, newBook];
     setBooks(updated);
     saveToStorage('books', updated);
+
+    // Broadcast notification for new library book / notes
+    const newNotif: AppNotification = {
+      id: 'notif_' + Date.now(),
+      schoolId: sId,
+      targetRole: 'all',
+      title: `📚 Library Resource: ${newBook.title}`,
+      message: `"${newBook.title}" by ${newBook.author} (${newBook.category}) is now available in the school library repository.`,
+      category: 'academic',
+      timestamp: 'Just now',
+      isRead: false,
+      link: 'library',
+    };
+
+    setNotifications((prev) => {
+      const next = [newNotif, ...prev];
+      saveToStorage('notifications', next);
+      return next;
+    });
+
     addToast(`Book "${newBook.title}" added to catalog`, 'success');
     logAudit('Book Added', `Added ISBN ${newBook.isbn}: ${newBook.title}`);
   };
@@ -1549,8 +1773,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSettings(updated);
     saveToStorage('settings', updated);
 
-    // Also update school header info if name changed
-    if (updates.name || updates.principalName || updates.email || updates.phone) {
+    // Also update school header info if name/logo changed
+    if (updates.name || updates.principalName || updates.email || updates.phone || updates.logo !== undefined) {
       setSchools((prev) =>
         prev.map((s) =>
           s.id === effectiveSchoolId
@@ -1560,6 +1784,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 principalName: updates.principalName || s.principalName,
                 email: updates.email || s.email,
                 phone: updates.phone || s.phone,
+                logo: updates.logo !== undefined ? updates.logo : s.logo,
               }
             : s
         )
@@ -1647,10 +1872,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         scopedDocuments,
         scopedBooks,
         scopedLibraryIssues,
+        scopedBookIssues: scopedLibraryIssues,
         scopedVehicles,
         scopedRoutes,
         scopedAuditLogs,
         currentSchoolSettings,
+
+        theme: isDarkMode ? 'dark' : 'light',
 
         addSchool,
         updateSchool,
@@ -1698,6 +1926,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addRoute,
 
         updateSettings,
+        updateUser,
+        updateCurrentUser,
+        sendBroadcastNotification,
 
         toasts,
         addToast,

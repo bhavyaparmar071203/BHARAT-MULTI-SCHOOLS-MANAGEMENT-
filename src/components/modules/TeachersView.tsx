@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Modal } from '../common/Modal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { ImageUpload } from '../common/ImageUpload';
 import { Teacher } from '../../types';
 import {
   Briefcase,
@@ -284,6 +285,16 @@ export const TeachersView: React.FC = () => {
         maxWidth="lg"
       >
         <form onSubmit={handleSaveAdd} className="space-y-4">
+          <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+            <ImageUpload
+              value={formData.avatar}
+              onChange={(url) => setFormData({ ...formData, avatar: url })}
+              mode="avatar"
+              presetCategory="teachers"
+              label="Faculty Profile Picture"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
@@ -398,6 +409,16 @@ export const TeachersView: React.FC = () => {
         maxWidth="lg"
       >
         <form onSubmit={handleSaveEdit} className="space-y-4">
+          <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+            <ImageUpload
+              value={formData.avatar}
+              onChange={(url) => setFormData({ ...formData, avatar: url })}
+              mode="avatar"
+              presetCategory="teachers"
+              label="Faculty Profile Picture"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">

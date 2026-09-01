@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Modal } from '../common/Modal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { ImageUpload } from '../common/ImageUpload';
 import { Student } from '../../types';
 import {
   GraduationCap,
@@ -450,6 +451,16 @@ export const StudentsView: React.FC<StudentsViewProps> = ({ onOpenIDCard }) => {
         maxWidth="2xl"
       >
         <form onSubmit={handleSaveNewStudent} className="space-y-4">
+          <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+            <ImageUpload
+              value={formData.avatar}
+              onChange={(url) => setFormData({ ...formData, avatar: url })}
+              mode="avatar"
+              presetCategory="students"
+              label="Student Admission Photo"
+            />
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
@@ -642,6 +653,16 @@ export const StudentsView: React.FC<StudentsViewProps> = ({ onOpenIDCard }) => {
         maxWidth="2xl"
       >
         <form onSubmit={handleSaveEditStudent} className="space-y-4">
+          <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+            <ImageUpload
+              value={formData.avatar}
+              onChange={(url) => setFormData({ ...formData, avatar: url })}
+              mode="avatar"
+              presetCategory="students"
+              label="Student Admission Photo"
+            />
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">

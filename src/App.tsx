@@ -140,11 +140,15 @@ const MainLayout: React.FC = () => {
         {/* Sidebar */}
         <Sidebar
           activeNav={activeNav}
+          currentTab={activeNav}
           onNavigate={handleNavigate}
+          onSelectTab={handleNavigate}
           isCollapsed={isSidebarCollapsed}
           setIsCollapsed={setIsSidebarCollapsed}
           isMobileOpen={isMobileSidebarOpen}
+          isOpen={isMobileSidebarOpen}
           setIsMobileOpen={setIsMobileSidebarOpen}
+          onClose={() => setIsMobileSidebarOpen(false)}
         />
 
         {/* Main Content Area */}
@@ -154,6 +158,9 @@ const MainLayout: React.FC = () => {
             onOpenSearch={() => setIsSearchOpen(true)}
             onOpenNotifications={() => setIsNotificationsOpen(true)}
             onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
+            onOpenSettings={() => handleNavigate('settings')}
+            onOpenProfile={() => handleNavigate('settings')}
+            onNavigate={handleNavigate}
             activeNav={activeNav}
           />
 

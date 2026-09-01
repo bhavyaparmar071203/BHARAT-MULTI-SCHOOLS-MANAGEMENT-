@@ -81,13 +81,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Today's attendance percentage calculation
   const todayStr = new Date().toISOString().substring(0, 10);
-  const todayAttendanceRecords = scopedAttendance.filter((a) => a.date === todayStr);
+  const todayAttendanceRecords = (scopedAttendance || []).filter((a) => a && a.date === todayStr);
   let todayPresent = 0;
   let todayTotal = 0;
   todayAttendanceRecords.forEach((att) => {
-    att.records.forEach((r) => {
+    (att.records || []).forEach((r) => {
       todayTotal++;
-      if (r.status === 'present' || r.status === 'late') todayPresent++;
+      if (r && (r.status === 'present' || r.status === 'late')) todayPresent++;
     });
   });
   const attendanceRate = todayTotal > 0 ? Math.round((todayPresent / todayTotal) * 100) : 94; // fallback benchmark
@@ -95,22 +95,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Fees calculation
   let totalBilled = 0;
   let totalCollected = 0;
-  scopedStudentFees.forEach((f) => {
-    totalBilled += f.amount - (f.discount || 0);
-    totalCollected += f.paidAmount || 0;
+  (scopedStudentFees || []).forEach((f) => {
+    if (f) {
+      totalBilled += (f.amount || 0) - (f.discount || 0);
+      totalCollected += f.paidAmount || 0;
+    }
   });
   const totalDues = Math.max(0, totalBilled - totalCollected);
 
   // Student specific data
   const myStudent = role === 'student'
-    ? scopedStudents.find((s) => s.id === currentUser?.linkedStudentId)
+    ? (scopedStudents || []).find((s) => s && s.id === currentUser?.linkedStudentId)
     : role === 'parent'
-    ? scopedStudents.find((s) => s.id === selectedChildId)
+    ? (scopedStudents || []).find((s) => s && s.id === selectedChildId)
     : null;
 
-  const myFees = myStudent ? scopedStudentFees.filter((f) => f.studentId === myStudent.id) : [];
-  const myPendingFees = myFees.filter((f) => f.status !== 'paid');
-  const myHomework = scopedHomework.slice(0, 4);
+  const myFees = myStudent ? (scopedStudentFees || []).filter((f) => f && f.studentId === myStudent.id) : [];
+  const myPendingFees = myFees.filter((f) => f && f.status !== 'paid');
+  const myHomework = (scopedHomework || []).slice(0, 4);
 
   // Chart data: Attendance by Class
   const attendanceBarData = [
@@ -200,7 +202,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {schools.length}
             </p>
             <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1">
-              Active: {schools.filter((s) => s.status === 'active').length} | Pending: {schools.filter((s) => s.status === 'pending').length}
+              Active: {(schools || []).filter((s) => s && s.status === 'active').length} | Pending: {(schools || []).filter((s) => s && s.status === 'pending').length}
             </p>
           </div>
 

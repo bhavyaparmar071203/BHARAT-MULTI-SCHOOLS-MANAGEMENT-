@@ -134,7 +134,7 @@ export const ExamsView: React.FC<ExamsViewProps> = ({ onNavigateToMarksEntry }) 
               {/* Schedule Table inside Exam */}
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                  Paper Schedule ({exam.schedule.length} Papers)
+                  Paper Schedule ({(exam.schedule || []).length} Papers)
                 </h4>
 
                 <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden text-xs">
@@ -148,14 +148,14 @@ export const ExamsView: React.FC<ExamsViewProps> = ({ onNavigateToMarksEntry }) 
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {exam.schedule.length === 0 ? (
+                      {(exam.schedule || []).length === 0 ? (
                         <tr>
                           <td colSpan={4} className="p-4 text-center text-slate-400">
                             No subject papers scheduled yet
                           </td>
                         </tr>
                       ) : (
-                        exam.schedule.map((slot) => {
+                        (exam.schedule || []).map((slot) => {
                           const subj = scopedSubjects.find((s) => s.id === slot.subjectId);
                           return (
                             <tr key={slot.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
@@ -187,7 +187,7 @@ export const ExamsView: React.FC<ExamsViewProps> = ({ onNavigateToMarksEntry }) 
             {/* Bottom Actions */}
             <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
               <span className="text-xs text-slate-400">
-                Applicable to {exam.classIds.length} Classes
+                Applicable to {(exam.classIds || []).length} Classes
               </span>
 
               {onNavigateToMarksEntry && (

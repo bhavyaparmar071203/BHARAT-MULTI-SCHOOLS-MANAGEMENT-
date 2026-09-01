@@ -276,14 +276,20 @@ export interface SchoolNotice {
   schoolId: string;
   title: string;
   description: string;
-  targetAudience: NoticeAudience;
+  targetAudience: NoticeAudience | string;
   targetClassId?: string;
   targetSectionId?: string;
-  date: string;
+  date?: string;
+  publishDate?: string;
   authorName: string;
-  isPublished: boolean;
+  authorRole?: string;
+  category?: 'general' | 'academic' | 'exam' | 'holiday' | 'event' | string;
+  isPublished?: boolean;
   isPinned?: boolean;
   attachmentName?: string;
+  attachmentUrl?: string;
+  attachmentSize?: string;
+  attachmentType?: string;
 }
 
 export type NotificationCategory =
@@ -308,19 +314,27 @@ export interface AppNotification {
   timestamp: string;
   isRead: boolean;
   link?: string;
+  attachmentName?: string;
 }
 
 export interface SchoolDocument {
   id: string;
   schoolId: string;
   title: string;
-  category: 'student' | 'school' | 'circular' | 'certificate';
+  category: 'policy' | 'syllabus' | 'circular' | 'certificate' | 'student' | 'school' | 'other' | string;
   studentId?: string;
   uploadedBy: string;
-  uploadDate: string;
+  uploadDate?: string;
+  uploadedDate?: string;
   fileSize: string;
   fileType: string;
   url?: string;
+  fileUrl?: string;
+  fileName?: string;
+  fileData?: string;
+  description?: string;
+  targetRole?: 'all' | 'students' | 'teachers' | 'parents' | string;
+  targetClassId?: string;
 }
 
 export interface LibraryBook {
@@ -333,6 +347,11 @@ export interface LibraryBook {
   totalCopies: number;
   availableCopies: number;
   rackNumber: string;
+  coverImage?: string;
+  pdfUrl?: string;
+  pdfName?: string;
+  fileSize?: string;
+  notes?: string;
 }
 
 export interface LibraryIssue {

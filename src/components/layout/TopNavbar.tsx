@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { ProfileModal } from '../common/ProfileModal';
 import {
   Bell,
   Search,
@@ -12,6 +13,7 @@ import {
   Building2,
   CheckCircle2,
   Menu,
+  Camera,
 } from 'lucide-react';
 import { UserRole } from '../../types';
 
@@ -22,6 +24,7 @@ interface TopNavbarProps {
   onOpenNotifications: () => void;
   onOpenSettings?: () => void;
   onOpenProfile?: () => void;
+  onNavigate?: (tab: string) => void;
   currentPageTitle?: string;
   activeNav?: string;
 }
@@ -33,6 +36,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   onOpenNotifications,
   onOpenSettings,
   onOpenProfile,
+  onNavigate,
   currentPageTitle,
   activeNav,
 }) => {
@@ -50,6 +54,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
 
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showSchoolScope, setShowSchoolScope] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const toggleSidebarFn = onToggleSidebar || onToggleMobileSidebar || (() => {});
 
@@ -269,17 +274,31 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
                 <div className="py-1">
                   <button
                     onClick={() => {
-                      onOpenProfile();
+                      setIsProfileModalOpen(true);
+                      setShowProfileMenu(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-colors"
+                  >
+                    <Camera className="w-4 h-4" />
+                    Change Profile Picture
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsProfileModalOpen(true);
                       setShowProfileMenu(false);
                     }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   >
                     <UserIcon className="w-4 h-4 text-slate-400" />
-                    My Profile
+                    My Account Profile
                   </button>
                   <button
                     onClick={() => {
-                      onOpenSettings();
+                      if (typeof onOpenSettings === 'function') {
+                        onOpenSettings();
+                      } else if (typeof onNavigate === 'function') {
+                        onNavigate('settings');
+                      }
                       setShowProfileMenu(false);
                     }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
@@ -289,7 +308,9 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
                   </button>
                   <button
                     onClick={() => {
-                      onOpenNotifications();
+                      if (typeof onOpenNotifications === 'function') {
+                        onOpenNotifications();
+                      }
                       setShowProfileMenu(false);
                     }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
@@ -317,6 +338,11 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           )}
         </div>
       </div>
+
+      {/* Profile & Avatar Editing Modal */}
+      {isProfileModalOpen && (
+        <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />
+      )}
     </header>
   );
 };

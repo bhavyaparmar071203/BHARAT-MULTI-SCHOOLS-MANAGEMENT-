@@ -29,19 +29,56 @@ import {
 import { UserRole } from '../../types';
 
 interface SidebarProps {
-  currentTab: string;
-  onSelectTab: (tab: string) => void;
-  isOpen: boolean;
-  onClose: () => void;
+  currentTab?: string;
+  activeNav?: string;
+  onSelectTab?: (tab: string) => void;
+  onNavigate?: (tab: string) => void;
+  isOpen?: boolean;
+  isMobileOpen?: boolean;
+  onClose?: () => void;
+  setIsMobileOpen?: (open: boolean) => void;
+  isCollapsed?: boolean;
+  setIsCollapsed?: (collapsed: boolean) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentTab,
+  activeNav,
   onSelectTab,
+  onNavigate,
   isOpen,
+  isMobileOpen,
   onClose,
+  setIsMobileOpen,
+  isCollapsed,
+  setIsCollapsed,
 }) => {
   const { currentUser, currentSchool, selectedChildId, setSelectedChildId, scopedStudents } = useApp();
+
+  const activeTabId = currentTab || activeNav || 'dashboard';
+  const open = isOpen ?? isMobileOpen ?? false;
+
+  const handleSelect = (tab: string) => {
+    if (typeof onSelectTab === 'function') {
+      onSelectTab(tab);
+    }
+    if (typeof onNavigate === 'function') {
+      onNavigate(tab);
+    }
+    if (typeof onClose === 'function') {
+      onClose();
+    } else if (typeof setIsMobileOpen === 'function') {
+      setIsMobileOpen(false);
+    }
+  };
+
+  const handleClose = () => {
+    if (typeof onClose === 'function') {
+      onClose();
+    } else if (typeof setIsMobileOpen === 'function') {
+      setIsMobileOpen(false);
+    }
+  };
 
   const role = currentUser?.role || 'school_admin';
 
@@ -141,24 +178,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Mobile Backdrop */}
-      {isOpen && (
+      {open && (
         <div
           className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm lg:hidden transition-opacity"
-          onClick={onClose}
+          onClick={handleClose}
         />
       )}
 
       {/* Main Sidebar Container */}
       <aside
         className={`fixed top-0 bottom-0 left-0 z-50 flex w-72 flex-col bg-slate-900 text-slate-100 border-r border-slate-800 transition-transform duration-300 lg:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
+          open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Top Header: Platform Identity & Mobile Close */}
         <div className="flex h-16 items-center justify-between px-5 border-b border-slate-800/80 bg-slate-950/40">
           <BrandLogo size="md" showTagline={true} inverted={true} />
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 text-slate-400 hover:text-white rounded-lg lg:hidden transition-colors"
           >
             <X className="w-5 h-5" />
@@ -169,8 +206,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {role !== 'super_admin' && currentSchool && (
           <div className="mx-3 mt-3.5 p-3 rounded-2xl bg-gradient-to-br from-slate-800/90 to-slate-900/90 border border-slate-700/60 shadow-md">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center text-orange-400 font-black font-heading text-sm flex-shrink-0">
-                {currentSchool.name.substring(0, 2).toUpperCase()}
+              <div className="w-10 h-10 rounded-xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center text-orange-400 font-black font-heading text-sm flex-shrink-0 overflow-hidden">
+                {currentSchool.logo ? (
+                  <img
+                    src={currentSchool.logo}
+                    alt={currentSchool.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  currentSchool.name.substring(0, 2).toUpperCase()
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="text-xs font-bold text-white truncate font-heading">{currentSchool.name}</h4>
@@ -229,14 +277,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = currentTab === item.id;
+            const isActive = activeTabId === item.id;
             return (
               <button
                 key={item.id}
-                onClick={() => {
-                  onSelectTab(item.id);
-                  onClose();
-                }}
+                onClick={() => handleSelect(item.id)}
                 className={`group flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all ${
                   isActive
                     ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-md shadow-orange-600/20 font-bold'

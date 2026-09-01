@@ -70,9 +70,9 @@ export const AttendanceView: React.FC = () => {
 
     const initialMap: Record<string, { status: AttendanceStatus; remark: string }> = {};
 
-    targetStudents.forEach((student) => {
-      if (existingRecord) {
-        const found = existingRecord.records.find((r) => r.studentId === student.id);
+    (targetStudents || []).forEach((student) => {
+      if (existingRecord && Array.isArray(existingRecord.records)) {
+        const found = existingRecord.records.find((r) => r && r.studentId === student.id);
         if (found) {
           initialMap[student.id] = {
             status: found.status,

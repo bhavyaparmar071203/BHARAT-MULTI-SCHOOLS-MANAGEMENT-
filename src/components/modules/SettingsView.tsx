@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Modal } from '../common/Modal';
+import { ImageUpload } from '../common/ImageUpload';
 import {
   Settings,
   Building,
@@ -14,6 +15,10 @@ import {
   Download,
   School,
   CheckCircle2,
+  User,
+  Camera,
+  Mail,
+  Phone,
 } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
@@ -21,19 +26,19 @@ export const SettingsView: React.FC = () => {
     currentUser,
     currentSchool,
     schools,
-    updateSchoolSettings,
+    updateSettings,
+    updateCurrentUser,
     addSchool,
-    theme,
-    toggleTheme,
+    isDarkMode,
+    toggleDarkMode,
     addToast,
-    scopedStudents,
-    scopedTeachers,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'academic' | 'multi_schools' | 'data'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'my_account' | 'academic' | 'multi_schools' | 'data'>('profile');
 
   // School profile form
   const [schoolName, setSchoolName] = useState(currentSchool?.name || '');
+  const [schoolLogo, setSchoolLogo] = useState(currentSchool?.logo || '');
   const [affiliationNo, setAffiliationNo] = useState(currentSchool?.affiliationNo || '');
   const [email, setEmail] = useState(currentSchool?.email || '');
   const [phone, setPhone] = useState(currentSchool?.phone || '');
@@ -44,6 +49,11 @@ export const SettingsView: React.FC = () => {
   const [principalName, setPrincipalName] = useState(currentSchool?.principalName || '');
   const [academicYear, setAcademicYear] = useState(currentSchool?.academicYear || '2025-2026');
 
+  // Personal user profile form
+  const [userName, setUserName] = useState(currentUser?.name || '');
+  const [userPhone, setUserPhone] = useState(currentUser?.phone || '');
+  const [userAvatar, setUserAvatar] = useState(currentUser?.avatar || '');
+
   // Add School Modal (Super Admin)
   const [isAddSchoolOpen, setIsAddSchoolOpen] = useState(false);
   const [newSchoolName, setNewSchoolName] = useState('');
@@ -52,6 +62,9 @@ export const SettingsView: React.FC = () => {
   const [newSchoolState, setNewSchoolState] = useState('');
   const [newPrincipal, setNewPrincipal] = useState('');
   const [newAffiliation, setNewAffiliation] = useState('');
+  const [newSchoolLogo, setNewSchoolLogo] = useState(
+    'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=100&auto=format&fit=crop&q=80'
+  );
 
   const isSuperAdmin = currentUser?.role === 'super_admin';
   const canEdit =
@@ -63,8 +76,9 @@ export const SettingsView: React.FC = () => {
     e.preventDefault();
     if (!currentSchool) return;
 
-    updateSchoolSettings({
+    updateSettings({
       name: schoolName,
+      logo: schoolLogo,
       affiliationNo,
       email,
       phone,
@@ -73,8 +87,18 @@ export const SettingsView: React.FC = () => {
       state,
       pincode,
       principalName,
-      academicYear,
+      academicSession: academicYear,
     });
+  };
+
+  const handleSavePersonalProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateCurrentUser({
+      name: userName,
+      phone: userPhone,
+      avatar: userAvatar,
+    });
+    addToast('Your personal account profile has been updated', 'success');
   };
 
   const handleRegisterSchool = (e: React.FormEvent) => {
@@ -96,7 +120,7 @@ export const SettingsView: React.FC = () => {
       principalName: newPrincipal || 'Principal',
       affiliationNo: newAffiliation || `CBSE-${newSchoolCode}`,
       academicYear: '2025-2026',
-      logo: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=100&auto=format&fit=crop&q=80',
+      logo: newSchoolLogo || 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=100&auto=format&fit=crop&q=80',
     });
 
     setIsAddSchoolOpen(false);
@@ -126,12 +150,12 @@ export const SettingsView: React.FC = () => {
             System & Institutional Settings
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Configure school particulars, academic schedules, multi-tenant parameters, and data backups
+            Manage school logo, profile picture, academic particulars, schedules, and data backups
           </p>
         </div>
 
         {/* Tab switcher */}
-        <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 self-start sm:self-auto">
+        <div className="flex items-center flex-wrap gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 self-start sm:self-auto">
           <button
             onClick={() => setActiveTab('profile')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
@@ -140,7 +164,17 @@ export const SettingsView: React.FC = () => {
                 : 'text-slate-500'
             }`}
           >
-            School Profile
+            School Crest & Details
+          </button>
+          <button
+            onClick={() => setActiveTab('my_account')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'my_account'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                : 'text-slate-500'
+            }`}
+          >
+            My Profile Picture
           </button>
           <button
             onClick={() => setActiveTab('academic')}
@@ -177,10 +211,27 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Tab 1: School Profile */}
+      {/* Tab 1: School Profile & Emblem */}
       {activeTab === 'profile' && (
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-          <form onSubmit={handleSaveProfile} className="space-y-4">
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
+          <form onSubmit={handleSaveProfile} className="space-y-6">
+            {/* School Emblem / Logo Upload Box */}
+            <div className="p-5 rounded-2xl bg-gradient-to-r from-orange-50/50 to-amber-50/30 dark:from-slate-800/80 dark:to-slate-800/40 border border-orange-200/70 dark:border-slate-700">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+                <School className="w-4 h-4 text-orange-600" />
+                <span>Official Institution Logo / Seal</span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                This logo will appear on student ID cards, report cards, fee receipts, circulars, and header banners.
+              </p>
+              <ImageUpload
+                value={schoolLogo}
+                onChange={(url) => setSchoolLogo(url)}
+                mode="logo"
+                label="Institution Logo"
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
@@ -309,10 +360,90 @@ export const SettingsView: React.FC = () => {
                   className="px-5 py-2.5 text-xs font-bold text-white bg-orange-600 hover:bg-orange-700 rounded-xl shadow-md shadow-orange-600/20 flex items-center gap-1.5 transition-all"
                 >
                   <Save className="w-4 h-4" />
-                  <span>Update School Particulars</span>
+                  <span>Update School Logo & Particulars</span>
                 </button>
               </div>
             )}
+          </form>
+        </div>
+      )}
+
+      {/* Tab 2: My Account & Profile Picture */}
+      {activeTab === 'my_account' && (
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white font-heading">
+              Personal Profile & Avatar Customization
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Upload your personal photo or select an avatar preset. This is visible across attendance sheets, communications, and notices.
+            </p>
+          </div>
+
+          <form onSubmit={handleSavePersonalProfile} className="space-y-6">
+            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row items-center md:items-start gap-6">
+              <ImageUpload
+                value={userAvatar}
+                onChange={(url) => setUserAvatar(url)}
+                mode="avatar"
+                label="Your Profile Picture"
+                presetCategory={
+                  currentUser?.role === 'teacher'
+                    ? 'teachers'
+                    : currentUser?.role === 'student'
+                    ? 'students'
+                    : 'all'
+                }
+              />
+              <div className="flex-1 space-y-1 text-center md:text-left">
+                <span className="text-xs uppercase font-bold tracking-wider text-orange-600 dark:text-orange-400">
+                  {currentUser?.role?.replace('_', ' ')} Account
+                </span>
+                <h4 className="text-lg font-bold text-slate-900 dark:text-white font-heading">{currentUser?.name}</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{currentUser?.email}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 pt-2">
+                  Supports JPG, PNG, WebP or SVG up to 5MB. Real-time preview applied instantly.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Full Display Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white outline-none focus:border-orange-500 font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Contact Mobile Number
+                </label>
+                <input
+                  type="tel"
+                  value={userPhone}
+                  onChange={(e) => setUserPhone(e.target.value)}
+                  placeholder="+91 98765 43210"
+                  className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white outline-none focus:border-orange-500 font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="submit"
+                className="px-5 py-2.5 text-xs font-bold text-white bg-orange-600 hover:bg-orange-700 rounded-xl shadow-md shadow-orange-600/20 flex items-center gap-1.5 transition-all"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save My Profile Picture & Details</span>
+              </button>
+            </div>
           </form>
         </div>
       )}
@@ -462,6 +593,15 @@ export const SettingsView: React.FC = () => {
         maxWidth="md"
       >
         <form onSubmit={handleRegisterSchool} className="space-y-4">
+          <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+            <ImageUpload
+              value={newSchoolLogo}
+              onChange={(url) => setNewSchoolLogo(url)}
+              mode="logo"
+              label="School Emblem"
+            />
+          </div>
+
           <div>
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
               School Name *

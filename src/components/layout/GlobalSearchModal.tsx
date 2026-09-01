@@ -94,12 +94,12 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
     });
 
     // Classes
-    scopedClasses.forEach((c) => {
-      if (c.name.toLowerCase().includes(q)) {
+    (scopedClasses || []).forEach((c) => {
+      if ((c.name || '').toLowerCase().includes(q)) {
         results.push({
           id: c.id,
           title: c.name,
-          subtitle: `Grade ${c.gradeLevel} · ${c.sectionIds.length} Sections`,
+          subtitle: `Grade ${c.gradeLevel} · ${(c.sectionIds || []).length} Sections`,
           category: 'Classes',
           tab: 'classes',
           icon: Layers,
@@ -108,12 +108,12 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
     });
 
     // Notices
-    scopedNotices.forEach((n) => {
-      if (n.title.toLowerCase().includes(q) || n.description.toLowerCase().includes(q)) {
+    (scopedNotices || []).forEach((n) => {
+      if ((n.title || '').toLowerCase().includes(q) || (n.description || '').toLowerCase().includes(q)) {
         results.push({
           id: n.id,
           title: n.title,
-          subtitle: `Notice · ${n.date} · For: ${n.targetAudience}`,
+          subtitle: `Notice · ${n.date || ''} · For: ${n.targetAudience || 'Everyone'}`,
           category: 'Notices',
           tab: 'notices',
           icon: Bell,
@@ -122,12 +122,12 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
     });
 
     // Homework
-    scopedHomework.forEach((h) => {
-      if (h.title.toLowerCase().includes(q) || h.description.toLowerCase().includes(q)) {
+    (scopedHomework || []).forEach((h) => {
+      if ((h.title || '').toLowerCase().includes(q) || (h.description || '').toLowerCase().includes(q)) {
         results.push({
           id: h.id,
           title: h.title,
-          subtitle: `Homework · Due: ${h.dueDate}`,
+          subtitle: `Homework · Due: ${h.dueDate || ''}`,
           category: 'Homework',
           tab: 'homework',
           icon: FileText,
@@ -136,12 +136,12 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
     });
 
     // Books
-    scopedBooks.forEach((b) => {
-      if (b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.isbn.includes(q)) {
+    (scopedBooks || []).forEach((b) => {
+      if ((b.title || '').toLowerCase().includes(q) || (b.author || '').toLowerCase().includes(q) || (b.isbn || '').includes(q)) {
         results.push({
           id: b.id,
           title: b.title,
-          subtitle: `Book · ${b.author} · ISBN: ${b.isbn}`,
+          subtitle: `Book · ${b.author} · ISBN: ${b.isbn || 'N/A'}`,
           category: 'Library',
           tab: 'library',
           icon: Library,

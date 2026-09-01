@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Modal } from '../common/Modal';
+import { FileUpload } from '../common/FileUpload';
+import { DocumentViewerModal } from '../common/DocumentViewerModal';
 import {
   Bell,
   Plus,
@@ -10,8 +12,12 @@ import {
   Search,
   Tag,
   Trash2,
+  Paperclip,
+  FileText,
+  Eye,
+  Download,
 } from 'lucide-react';
-import { Notice } from '../../types';
+import { SchoolNotice } from '../../types';
 
 export const NoticesView: React.FC = () => {
   const {
@@ -32,6 +38,17 @@ export const NoticesView: React.FC = () => {
   const [category, setCategory] = useState<'academic' | 'event' | 'holiday' | 'exam' | 'general'>('general');
   const [targetAudience, setTargetAudience] = useState<'all' | 'teachers' | 'students' | 'parents'>('all');
   const [isPinned, setIsPinned] = useState(false);
+  const [attachmentUrl, setAttachmentUrl] = useState('');
+  const [attachmentName, setAttachmentName] = useState('');
+  const [attachmentType, setAttachmentType] = useState('application/pdf');
+  const [attachmentSize, setAttachmentSize] = useState('');
+
+  // Viewer state
+  const [viewerFile, setViewerFile] = useState<{
+    url: string;
+    name: string;
+    type?: string;
+  } | null>(null);
 
   const canManage =
     currentUser?.role === 'super_admin' ||
@@ -57,6 +74,10 @@ export const NoticesView: React.FC = () => {
     setCategory('general');
     setTargetAudience('all');
     setIsPinned(false);
+    setAttachmentUrl('');
+    setAttachmentName('');
+    setAttachmentType('application/pdf');
+    setAttachmentSize('');
     setIsAddModalOpen(true);
   };
 
@@ -73,11 +94,17 @@ export const NoticesView: React.FC = () => {
       category,
       targetAudience,
       isPinned,
+      attachmentUrl: attachmentUrl || undefined,
+      attachmentName: attachmentName || undefined,
+      attachmentType: attachmentType || undefined,
+      attachmentSize: attachmentSize || undefined,
+      fileData: attachmentUrl || undefined,
       publishDate: new Date().toISOString().substring(0, 10),
       authorName: currentUser?.name || 'Principal Office',
       authorRole: currentUser?.role || 'school_admin',
     });
 
+    addToast('Circular published and broadcasted to school community', 'success');
     setIsAddModalOpen(false);
   };
 
@@ -90,7 +117,7 @@ export const NoticesView: React.FC = () => {
             Official Notices & Circulars
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Broadcast institutional circulars, academic notices, and holiday announcements
+            Broadcast institutional circulars with PDF attachments and instant school-wide notifications
           </p>
         </div>
 
@@ -171,6 +198,41 @@ export const NoticesView: React.FC = () => {
                     {notice.description}
                   </p>
 
+                  {/* Attached Document or PDF */}
+                  {(notice.attachmentUrl || notice.fileData) && (
+                    <div className="mt-3.5 p-3 rounded-xl bg-orange-50/60 dark:bg-slate-800/80 border border-orange-200/60 dark:border-slate-700 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-600 flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                            {notice.attachmentName || `${notice.title}.pdf`}
+                          </p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                            {notice.attachmentSize || 'Document Attachment'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          onClick={() =>
+                            setViewerFile({
+                              url: notice.attachmentUrl || notice.fileData || '',
+                              name: notice.attachmentName || notice.title,
+                              type: notice.attachmentType,
+                            })
+                          }
+                          className="px-3 py-1.5 text-xs font-bold text-orange-600 bg-white dark:bg-slate-900 hover:bg-orange-50 dark:hover:bg-slate-800 border border-orange-200 dark:border-slate-700 rounded-lg flex items-center gap-1 transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>View PDF</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
                     <span>
                       Issued by <strong className="text-slate-700 dark:text-slate-300">{notice.authorName}</strong> ({notice.authorRole})
@@ -199,7 +261,7 @@ export const NoticesView: React.FC = () => {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         title="Publish Institutional Circular"
-        subtitle="Issue official notification to school community"
+        subtitle="Issue official notification and broadcast alerts to school community"
         maxWidth="lg"
       >
         <form onSubmit={handleSave} className="space-y-4">
@@ -266,6 +328,26 @@ export const NoticesView: React.FC = () => {
             />
           </div>
 
+          {/* File / PDF Attachment Section */}
+          <div className="pt-2">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+              Attach Official PDF / Circular File (Optional)
+            </label>
+            <FileUpload
+              value={attachmentUrl}
+              fileName={attachmentName}
+              fileSize={attachmentSize}
+              onChange={(data) => {
+                setAttachmentUrl(data.url);
+                setAttachmentName(data.name);
+                setAttachmentType(data.type);
+                setAttachmentSize(data.sizeFormatted);
+              }}
+              acceptedTypes={['.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg']}
+              maxSizeMB={15}
+            />
+          </div>
+
           <label className="flex items-center gap-2 cursor-pointer pt-1">
             <input
               type="checkbox"
@@ -290,11 +372,22 @@ export const NoticesView: React.FC = () => {
               type="submit"
               className="px-5 py-2 text-xs font-bold text-white bg-orange-600 hover:bg-orange-700 rounded-xl shadow-md"
             >
-              Publish Notice
+              Publish & Broadcast Notice
             </button>
           </div>
         </form>
       </Modal>
+
+      {/* Document & PDF Viewer Modal */}
+      {viewerFile && (
+        <DocumentViewerModal
+          isOpen={!!viewerFile}
+          onClose={() => setViewerFile(null)}
+          fileUrl={viewerFile.url}
+          fileName={viewerFile.name}
+          fileType={viewerFile.type}
+        />
+      )}
     </div>
   );
 };

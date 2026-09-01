@@ -184,11 +184,11 @@ export const TransportView: React.FC = () => {
                   {/* Stops Timeline */}
                   <div className="mt-4 space-y-2">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Transit Stops ({route.stops.length} Designated Halts)
+                      Transit Stops ({(route.stops || []).length} Designated Halts)
                     </span>
 
                     <div className="space-y-1.5 border-l-2 border-orange-500 ml-2 pl-3">
-                      {route.stops.map((stop, idx) => (
+                      {(route.stops || []).map((stop, idx) => (
                         <div key={idx} className="text-xs flex items-center justify-between">
                           <span className="font-medium text-slate-800 dark:text-slate-200">
                             {stop.stopName}
